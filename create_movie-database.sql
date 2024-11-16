@@ -1,4 +1,4 @@
--- Active: 1730711483210@@127.0.0.1@5432@postgres@public
+
 CREATE TABLE genre (
     id INT PRIMARY KEY,
     description VARCHAR(255) NOT NULL
