@@ -14,20 +14,40 @@ app.listen(port, () => {
     console.log('The server is running');
 });
 
-//  all users
-app.get('/user', (req, res) => {
-  res.json(user);
+
+// POST user with body parameters
+//let users = [];
+/* app.post('/user', (req, res) => {
+  let username = req.body.uname;
+  users.push(username);
+  res.send(`Username ${username} added!`);
+}); */
+
+let users = [];
+app.post('/user', (req, res) => {
+  users.push(req.body);
+  res.send(`Username ${req.body.uname} added!`);
 });
+// check users
+app.get('/users', (req, res) => {
+  res.json(users);
+});
+
+app.get('/userinfo', (req,res) => {
+  let result = {count: users.length};
+  let sum =0;
+  users.forEach(u => sum += Number(u.salary));
+
+  result.salarySum = sum;
+  result.users = users;
+
+  res.json(result);
+});
+
 
 // user by id
 app.get('/user/:id', (req, res) => {
   res.json(user);
-});
-
-// POST user with body parameters
-app.post('/user', (req, res) => {
-  console.log(req.body);
-  res.send();
 });
 
 // movies by genre
