@@ -1,4 +1,4 @@
-import express from 'express';
+/* import express from 'express';
 import pg from 'pg';
 import dotenv from 'dotenv';
 
@@ -20,7 +20,7 @@ const client = new Client();
     database: process.env.PG_DB,
     host: process.env.PG_HOST,
     port: process.env.PG_PORT
-}); */
+});
 
 connect();
 
@@ -33,4 +33,4 @@ async function connect() {
     } catch (error) {
         console.log(error);
     }
-}
+} */
