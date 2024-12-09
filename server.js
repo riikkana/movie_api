@@ -1,5 +1,6 @@
 import express from 'express';
 import { pgPool } from './pg_connection.js';
+import { getMovies, getMovieUsers } from './db_queries.js';
 
 let app = express();
 
@@ -12,18 +13,17 @@ app.listen(port, () => {
 });
 
 app.get('/movies', async (req,res) => {
+    let keyword = req.query.keyword;
     try {
-        const result = await pgPool.query('SELECT * FROM movie');
-        res.json(result.rows)
+        res.json(await getMovies(keyword));
     } catch (error) {
         res.status(400).json({error: error.message});
-
-}});
+    }
+});
 
  app.get('/movie_users', async (req,res) => {
     try {
-        const result = await pgPool.query('SELECT * FROM movie_user');
-        res.json(result.rows)
+        res.json(await getMovieUsers());
     } catch (error) {
         res.status(400).json({error: error.message});
     }
