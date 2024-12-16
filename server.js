@@ -1,6 +1,8 @@
 import express from 'express';
 import { pgPool } from './pg_connection.js';
-import { getMovies, getMoviesById, getMovieUsers } from './db_queries.js';
+import { getMovies, getMoviesById, getMovieUsers, deleteMovieById, addReview, addFavourite, getFavouritesByUser } from './db_queries.js';
+import bcrypt from 'bcrypt';
+import { parse } from 'dotenv';
 
 let app = express();
 
@@ -48,9 +50,11 @@ app.post('/movie_user', async (req,res) => {
     const name = req.body.name;
     const pword = req.body.pword;
     const yob = req.body.yob;
+
     try {
+        const hash = await bcrypt.hash(pword, 10);
         const result = await pgPool.query(
-            'INSERT INTO movie_user VALUES ($1,$2,$3,$4,$5)', [id, uname, name, pword, yob]);
+            'INSERT INTO movie_user VALUES ($1,$2,$3,$4,$5)', [id, uname, name, hash, yob]);
         res.end();
     } catch (error) {
         res.status(400).json({error: error.message});
@@ -67,21 +71,91 @@ app.get('/movies_id', async (req,res) => {
     }
 });
 
-//5. REMOVE MOVIE BY ID PUUTTUU VIELÄ
+//5. remove movie by id
+app.delete('/movies/:id', async (req, res) => {
+    const id = req.params.id;
+    try {
+        if (isNaN(Number(id))) {
+            return res.status(400).json({ error: 'Invalid ID format' });
+        }
+        const deletedMovie = await deleteMovieById(id);
 
-//6. ja 7. get movies; all and by keyword
+        res.json({ message: 'Movie deleted successfully', movie: deletedMovie });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+
+//6. ja 7. get movies; all and by keyword, with pagination
 app.get('/movies', async (req,res) => {
     let keyword = req.query.keyword;
+    let page = parseInt(req.query.page) || 1;
+    let pageSize = 10;
+
     try {
-        res.json(await getMovies(keyword));
+        res.json(await getMovies(keyword, page, pageSize));
     } catch (error) {
         res.status(400).json({error: error.message});
     }
 });
 
-//8. ADD MOVIE REVIEW PUUTTUU VIELÄ
-//9. ADD FAVORITE MOVIE FOR USER PUUTTUU VIELÄ
-//10. GET FAVORITE MOVIES BY USERNAME PUUTTUU VIELÄ
+//8. add movie review
+app.post('/reviews', async (req, res) => {
+    const { stars, reviewText, movieId, username } = req.body;
+
+    if (!stars || !movieId || !username) {
+        return res.status(400).json({ error: 'Missing required fields: stars, movieId, username' });
+    }
+    if (stars < 1 || stars > 5) {
+        return res.status(400).json({ error: 'Stars must be between 1 and 5' });
+    }
+    try {
+        const newReview = await addReview(stars, reviewText, movieId, username);
+        res.status(201).json({ message: 'Review added successfully', review: newReview });
+    } catch (error) {
+        if (error.constraint === 'review_movie_id_fkey') {
+            return res.status(404).json({ error: 'Movie not found' });
+        } else if (error.constraint === 'review_username_fkey') {
+            return res.status(404).json({ error: 'User not found' });
+        } else {
+            console.error('Error adding review:', error); 
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+});
+
+
+//9. add favourite movie for user
+app.post('/favourites', async (req, res) => {
+    const { username, movieId } = req.body;
+
+    if (!username || !movieId) {
+        return res.status(400).json({ error: 'Missing required fields: username, movieId' });
+    }
+    try {
+        const newFavourite = await addFavourite(username, movieId);
+        res.status(201).json({ message: 'Favourite added successfully', favourite: newFavourite });
+    } catch (error) {
+        if (error.code === '23503') {
+            res.status(400).json({ error: 'Invalid username or movie ID' });
+        } else if (error.code === '23505') {
+            res.status(400).json({ error: 'This favourite already exists' });
+        } else {
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+});
+
+//10. get favourite movies by username
+app.get('/favourites', async (req,res) => {
+    let user = req.query.username;
+    try {
+        res.json(await getFavouritesByUser(user));
+    } catch (error) {
+        res.status(400).json({error: error.message});
+    }
+});
 
 
 //get all users, ei ollut tehtävänannossa
